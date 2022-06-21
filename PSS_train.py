@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from model_1 import *
+from PSS_model import *
 from random import shuffle, random
 from Cal_measurement import *
 from model_profiler import model_profiler
