@@ -52,6 +52,18 @@ FLAGS = easydict.EasyDict({"img_size": 352,
                            "val_acc_graphs": "/yuwhan/Edisk/yuwhan/Edisk/Segmentation/V2/BoniRob/val_acc.txt",
                            
                            "test_images": "/yuhwan/yuhwan/checkpoint/Segmenation/MTS_CNN_related/BoniRob_v1_DSLR/test_images",
+                           
+                           "Ablation_1": False,
+
+                           "Ablation_2": False,
+
+                           "Ablation_3": False,
+
+                           "Ablation_4": False,
+
+                           "Ablation_5": False,
+
+                           "feature_map_extractor":True,
 
                            "train": True})
 
@@ -550,77 +562,148 @@ def main():
         C = 0.
         cm = 0.
         miou = 0.
+        Q = 0.
+        Em = 0.
+        Fm = 0.
+        mae = 0.
+        
         for i in range(len(test_img_dataset)):
             batch_images, batch_labels = next(test_iter)
-            batch_labels = tf.where(batch_labels == 255, 1, batch_labels).numpy()
-            background_logits, object_logits = run_model(model, batch_images, False)
-            temp_background_logits = tf.nn.sigmoid(object_logits) * background_logits
-            temp_object_logits = tf.nn.sigmoid(background_logits) * object_logits
-            background_logits = tf.nn.sigmoid(temp_background_logits[0, :, :, 0])
-            object_logits = tf.nn.sigmoid(temp_object_logits[0, :, :, 0])
+            if FLAGS.Ablation_5:    # proposed method
+                ###############################################################################################
+                # Proposed method
+                batch_labels = tf.where(batch_labels == 255, 1, batch_labels).numpy()
+                background_logits, object_logits = run_model(model, batch_images, False)
+                temp_background_logits = tf.nn.sigmoid(object_logits) * background_logits
+                temp_object_logits = tf.nn.sigmoid(background_logits) * object_logits
+                object_logits = tf.nn.sigmoid(temp_object_logits[0, :, :, 0])
+                final_logits = object_logits
+                object_logits = tf.where(object_logits >=0.5, 1, 0)
 
-            b_logits = tf.where(background_logits >= 0.5, 1, 0)
-            o_logits = tf.where(object_logits >= 0.5, 1, 0)
+                final_output = object_logits
+                temp_final_output = final_output
+                pred_mask_color = color_map[final_output]
+                final_output = tf.where(final_output == 0, 1, 0).numpy()
 
-            final_output = o_logits + b_logits
-            final_output = tf.where(final_output == 2, 1, 0)
+                batch_label = tf.cast(batch_labels[0, :, :, 0], tf.uint8).numpy()
+                temp_label = batch_label
+                batch_label = np.where(batch_label == 0, 1, 0)
+                batch_label = np.array(batch_label, np.int32)
+                ###############################################################################################
 
-            pred_mask_color = color_map[final_output]
+            if FLAGS.Ablation_1:
+                ###############################################################################################
+                # Ablation 1
+                batch_labels = tf.where(batch_labels == 255, 1, batch_labels).numpy()
+                background_logits, object_logits = run_model(model, batch_images, False)
+                temp_object_logits = (background_logits + object_logits) / 2
+                object_logits = tf.nn.sigmoid(temp_object_logits[0, :, :, 0])
+                final_logits = object_logits
+                object_logits = tf.where(object_logits >=0.5, 1, 0)
 
-            final_output = tf.where(final_output == 0, 1, 0).numpy()
+                final_output = object_logits
+                temp_final_output = final_output
+                pred_mask_color = color_map[final_output]
+                final_output = tf.where(final_output == 0, 1, 0).numpy()
 
-            batch_label = tf.cast(batch_labels[0, :, :, 0], tf.uint8).numpy()
-            batch_label = np.where(batch_label == 0, 1, 0)
-            batch_label = np.array(batch_label, np.int32)
+                batch_label = tf.cast(batch_labels[0, :, :, 0], tf.uint8).numpy()
+                temp_label = batch_label
+                batch_label = np.where(batch_label == 0, 1, 0)
+                batch_label = np.array(batch_label, np.int32)
+                ###############################################################################################
 
-            a = np.bincount(np.reshape(batch_label, [-1]), minlength=2)[1]
-            if a != 0:
-                C +=1.
-                miou_, cm_ = Measurement(predict=final_output,
-                                    label=batch_label, 
-                                    shape=[FLAGS.img_size*FLAGS.img_size, ], 
-                                    total_classes=2).MIOU()
+            if FLAGS.Ablation_2:
+                ###############################################################################################
+                # Ablation 1
+                batch_labels = tf.where(batch_labels == 255, 1, batch_labels).numpy()
+                background_logits, object_logits = run_model(model, batch_images, False)
+                temp_object_logits = background_logits * object_logits
+                object_logits = tf.nn.sigmoid(temp_object_logits[0, :, :, 0])
+                final_logits = object_logits
+                object_logits = tf.where(object_logits >=0.5, 1, 0)
 
-                cm_ = tf.cast(cm_, tf.float32)
-                cm += cm_
-                miou += miou_
+                final_output = object_logits
+                temp_final_output = final_output
+                pred_mask_color = color_map[final_output]
+                final_output = tf.where(final_output == 0, 1, 0).numpy()
 
-                precision = tf.math.divide_no_nan(cm_[0,0], (cm_[0,0] + cm_[1,0]))
-                recall = tf.math.divide_no_nan(cm_[0,0], (cm_[0,0] + cm_[0,1]))
+                batch_label = tf.cast(batch_labels[0, :, :, 0], tf.uint8).numpy()
+                temp_label = batch_label
+                batch_label = np.where(batch_label == 0, 1, 0)
+                batch_label = np.array(batch_label, np.int32)
+                ###############################################################################################
 
-                precision_ += precision
-                recall_ += recall
-                f1_score_ += tf.math.divide_no_nan((2*precision*recall), (precision + recall))
+            if FLAGS.Ablation_3:
+                ###############################################################################################
+                # Ablation 3
+                batch_labels = tf.where(batch_labels == 255, 1, batch_labels).numpy()
+                background_logits, object_logits = run_model(model, batch_images, False)
+                temp_object_logits = background_logits + object_logits
+                object_logits = tf.nn.sigmoid(temp_object_logits[0, :, :, 0])
+                final_logits = object_logits
+                object_logits = tf.where(object_logits >=0.5, 1, 0)
 
-            plt.imsave("C:/Users/Yuhwan/Downloads/t/" + test_img_dataset[i].split('/')[-1], pred_mask_color)
+                final_output = object_logits
+                temp_final_output = final_output
+                pred_mask_color = color_map[final_output]
+                final_output = tf.where(final_output == 0, 1, 0).numpy()
 
-        iou = cm[0,0]/(cm[0,0] + cm[0,1] + cm[1,0])
-        print("test mIoU = %.4f, test F1_score = %.4f, test sensitivity(recall) = %.4f, test precision = %.4f" % (miou / C,
-                                                                                                                f1_score_ / C,
-                                                                                                                recall_ / C,
-                                                                                                                precision_ / C))
-        print(miou / C)
+                batch_label = tf.cast(batch_labels[0, :, :, 0], tf.uint8).numpy()
+                temp_label = batch_label
+                batch_label = np.where(batch_label == 0, 1, 0)
+                batch_label = np.array(batch_label, np.int32)
+                ###############################################################################################
 
+            if FLAGS.Ablation_4:
+                ###############################################################################################
+                # Ablation 3
+                batch_labels = tf.where(batch_labels == 255, 1, batch_labels).numpy()
+                background_logits, object_logits = run_model(model, batch_images, False)
+                temp_object_logits = object_logits
+                object_logits = tf.nn.sigmoid(temp_object_logits[0, :, :, 0])
+                final_logits = object_logits
+                object_logits = tf.where(object_logits >=0.5, 1, 0)
 
+                final_output = object_logits
+                temp_final_output = final_output
+                pred_mask_color = color_map[final_output]
+                final_output = tf.where(final_output == 0, 1, 0).numpy()
 
+                batch_label = tf.cast(batch_labels[0, :, :, 0], tf.uint8).numpy()
+                temp_label = batch_label
+                batch_label = np.where(batch_label == 0, 1, 0)
+                batch_label = np.array(batch_label, np.int32)
+                ###############################################################################################
 
-        #    a = np.bincount(np.reshape(batch_label, [-1]), minlength=2)[1]
-        #    if a != 0:
-        #        C +=1.
-        #        cm = Measurement(predict=final_output,
-        #                            label=batch_label, 
-        #                            shape=[FLAGS.img_size*FLAGS.img_size, ], 
-        #                            total_classes=2).MIOU()
-        #        cm = tf.cast(cm, tf.float32)
-        #        iou += tf.math.divide_no_nan(cm[0,0], (cm[0,0] + cm[0,1] + cm[1,0]))
-        #        precision_ += tf.math.divide_no_nan(cm[0,0], (cm[0,0] + cm[1,0]))
-        #        recall_ += tf.math.divide_no_nan(cm[0,0], (cm[0,0] + cm[0,1]))
+            if FLAGS.feature_map_extractor:
+                ###############################################################################################
+                _, _ = run_model(model, batch_images, False)
+                ###############################################################################################
 
-        #f1_score = tf.math.divide_no_nan((2*(precision_ / C)*(recall_ / C)), ((precision_ / C) + (recall_ / C)))
-        #print("test mIoU = %.4f, test F1_score = %.4f, test sensitivity(recall) = %.4f, test precision = %.4f" % (iou / C,
-        #                                                                                                        f1_score,
-        #                                                                                                        recall_ / C,
-        #                                                                                                        precision_ / C))
+            miou_, cm_ = Measurement(predict=final_output,
+                                label=batch_label,
+                                shape=[FLAGS.img_size*FLAGS.img_size, ],
+                                total_classes=2).MIOU()
+
+            cm_ = tf.cast(cm_, tf.float32)
+            cm += cm_
+            miou += miou_
+
+            mae += Eval_mae(temp_final_output.numpy(), temp_label)
+            a = np.bincount(np.reshape(batch_label, [-1]), minlength=2)[0]
+            Q += Eval_Smeasure(final_logits.numpy(), temp_label)
+            Em += Eval_Emeasure(final_logits.numpy(), temp_label)
+            Fm += Eval_fmeasure(final_logits.numpy(), temp_label)
+
+            plt.imsave(FLAGS.test_images + test_img_dataset[i].split('/')[-1], pred_mask_color)
+
+        Em = np.max(Em) / len(test_img_dataset)
+        Fm = np.max(Fm) / len(test_img_dataset)
+        print("mIoU = %.4f" % (miou / len(test_img_dataset)))
+        print("S-meature = %.4f" % (Q / len(test_img_dataset)))
+        print("mE = %.4f" % (Em))
+        print("fE = %.4f" % (Fm))
+        print("mae = %.4f" % (mae / len(test_img_dataset)))
         print(C)
 if __name__ == "__main__":
     main()
